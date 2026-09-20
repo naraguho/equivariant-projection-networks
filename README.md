@@ -146,10 +146,44 @@ tests/             numerical symmetry checks
 
 ## Scope
 
-This first release isolates the reusable machine-learning idea.  It does not
-bundle large exact-diagonalization datasets, trained checkpoints, or HPC
-production trajectories.  Those components can be distributed separately
-without obscuring the few lines responsible for exact symmetry.
+The repository includes small samples drawn from the real ED-derived datasets
+in `data/sample/`.  They exercise the complete data-loading and training path.
+The full datasets, saved validation rollouts, and trained checkpoints are
+distributed as checksummed GitHub release assets:
+
+```bash
+python scripts/download_data.py --extract
+```
+
+Train on the full FK data with
+
+```bash
+python training/train_fk.py \
+  --data data/full/fk_edkmc_rc10_full.csv.gz \
+  --epochs 500
+```
+
+Train on the full Holstein data with
+
+```bash
+python training/train_holstein.py \
+  --data-dir data/full/holstein_ed_forces_full \
+  --epochs 100 --batch-size 24
+```
+
+Reproduce the saved ED-versus-ML correlation benchmarks and Holstein scaling
+collapse with
+
+```bash
+python benchmarks/plot_saved_benchmarks.py
+```
+
+See [`DATASETS.md`](DATASETS.md) for provenance, physical parameters, split
+definitions, file formats, and checksums.
+
+The large production trajectories themselves remain on the HPC system; the
+release contains their correlation observables needed for the manuscript
+figures rather than hundreds of gigabytes of redundant snapshots.
 
 ## Citation
 
@@ -158,4 +192,3 @@ Citation information will be added when the manuscript record is public.
 ## License
 
 MIT
-
