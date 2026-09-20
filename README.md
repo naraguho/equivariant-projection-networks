@@ -8,6 +8,15 @@ show the central method with short, readable PyTorch code.  The implementation
 favors explicit transformations and straightforward loops over highly
 optimized, application-specific machinery.
 
+## Start with the visual tutorial
+
+Open [`notebooks/visual_tutorial.ipynb`](notebooks/visual_tutorial.ipynb).
+It is committed with its outputs, so GitHub displays all eleven figures without
+requiring Python or a local installation.  The notebook moves visually from
+the eight transformations of `D4`, through invariant and equivariant group
+averaging, to the real FK and Holstein architectures, ED-derived labels,
+ED-versus-ML dynamical validation, and the Holstein correlation collapse.
+
 ## The main idea
 
 Let a finite group `G` act on an input `x` through `D_X(g)` and on an output
