@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 
 from epn.data import (
@@ -39,6 +40,48 @@ def evaluate(model, loader, device, force_rms):
         numerator += float((prediction - target).square().sum())
         count += target.numel()
     return numerator / count / force_rms**2
+
+
+def save_validation_scatter(model, loader, device, output, max_points=100_000):
+    """Save conservative ML forces against ED validation-force labels."""
+    model.eval()
+    actual, predicted = [], []
+    for q, target in loader:
+        q = q.to(device).reshape(-1, 30, 30)
+        target = target.to(device).reshape_as(q)
+        with torch.enable_grad():
+            prediction = model.force(q)
+        actual.append(target.detach().cpu().numpy().reshape(-1))
+        predicted.append(prediction.detach().cpu().numpy().reshape(-1))
+
+    actual = np.concatenate(actual)
+    predicted = np.concatenate(predicted)
+    if len(actual) > max_points:
+        keep = np.linspace(0, len(actual) - 1, max_points, dtype=int)
+        actual, predicted = actual[keep], predicted[keep]
+
+    low = float(min(actual.min(), predicted.min()))
+    high = float(max(actual.max(), predicted.max()))
+    padding = 0.03 * (high - low or 1.0)
+    limits = (low - padding, high + padding)
+    rmse = float(np.sqrt(np.mean((predicted - actual) ** 2)))
+
+    fig, ax = plt.subplots(figsize=(5.2, 5.2))
+    ax.scatter(actual, predicted, s=5, alpha=0.2, rasterized=True)
+    ax.plot(limits, limits, "k--", lw=1.2, label="$y=x$")
+    ax.set(
+        xlabel="ED force",
+        ylabel="ML force",
+        xlim=limits,
+        ylim=limits,
+        aspect="equal",
+        title=f"Holstein validation (RMSE={rmse:.3g})",
+    )
+    ax.grid(alpha=0.2)
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(output, dpi=200)
+    plt.close(fig)
 
 
 def main():
@@ -95,6 +138,10 @@ def main():
     pd.DataFrame(history, columns=["epoch", "train_normalized_mse", "validation_normalized_mse"]).to_csv(
         args.output / "history.csv", index=False
     )
+    save_validation_scatter(
+        model, validation_loader, device,
+        args.output / "validation_ed_vs_ml.png",
+    )
     torch.save({
         "model_state_dict": model.state_dict(), "q_mean": q_mean,
         "q_std": q_std, "force_rms": force_rms,
@@ -103,4 +150,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

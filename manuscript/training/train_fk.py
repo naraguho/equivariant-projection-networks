@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import torch
+import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 
 from epn import DirectionalEPN
@@ -42,6 +43,51 @@ def evaluate(model, loader, device):
         numerator += float(((model(x) - y).square() * mask).sum())
         denominator += float(mask.sum())
     return numerator / denominator
+
+
+@torch.no_grad()
+def save_validation_scatter(
+    model, loader, device, target_mean, target_std, output, max_points=100_000
+):
+    """Save ML predictions against ED labels for every legal validation move."""
+    model.eval()
+    actual, predicted = [], []
+    for x, y, mask in loader:
+        x, y, mask = x.to(device), y.to(device), mask.to(device)
+        prediction = model(x)
+        actual.append((y[mask] * target_std + target_mean).cpu().numpy())
+        predicted.append(
+            (prediction[mask] * target_std + target_mean).cpu().numpy()
+        )
+
+    actual = np.concatenate(actual)
+    predicted = np.concatenate(predicted)
+    if len(actual) > max_points:
+        keep = np.linspace(0, len(actual) - 1, max_points, dtype=int)
+        actual, predicted = actual[keep], predicted[keep]
+
+    low = float(min(actual.min(), predicted.min()))
+    high = float(max(actual.max(), predicted.max()))
+    padding = 0.03 * (high - low or 1.0)
+    limits = (low - padding, high + padding)
+    rmse = float(np.sqrt(np.mean((predicted - actual) ** 2)))
+
+    fig, ax = plt.subplots(figsize=(5.2, 5.2))
+    ax.scatter(actual, predicted, s=5, alpha=0.25, rasterized=True)
+    ax.plot(limits, limits, "k--", lw=1.2, label="$y=x$")
+    ax.set(
+        xlabel="ED $\\Delta F$",
+        ylabel="ML $\\Delta F$",
+        xlim=limits,
+        ylim=limits,
+        aspect="equal",
+        title=f"FK validation (RMSE={rmse:.3g})",
+    )
+    ax.grid(alpha=0.2)
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(output, dpi=200)
+    plt.close(fig)
 
 
 def main():
@@ -97,6 +143,10 @@ def main():
     pd.DataFrame(history, columns=["epoch", "train_normalized_mse", "validation_normalized_mse"]).to_csv(
         args.output / "history.csv", index=False
     )
+    save_validation_scatter(
+        model, validation_loader, device, target_mean, target_std,
+        args.output / "validation_ed_vs_ml.png",
+    )
     torch.save({
         "model_state_dict": model.state_dict(),
         "coordinates": coordinates,
@@ -107,4 +157,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
