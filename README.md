@@ -87,6 +87,29 @@ largest equivariance error: 1e-16
 
 The examples do not require training data or a GPU.
 
+## Run the training examples
+
+Starting from a terminal, clone the repository and run one command:
+
+```bash
+git clone https://github.com/naraguho/equivariant-projection-networks.git
+cd equivariant-projection-networks
+bash run_training.sh
+```
+
+The script creates a Python virtual environment, installs the required
+packages, and trains both manuscript models for one epoch using the included
+real-data samples. It also writes the validation ED-versus-ML $y=x$ plots.
+
+For a longer example, set the number of epochs:
+
+```bash
+EPOCHS=10 bash run_training.sh
+```
+
+Results are saved under `manuscript/outputs/fk/` and
+`manuscript/outputs/holstein/`.
+
 ## Files to read
 
 - [`invariant.py`](invariant.py): scalar group averaging in one file.

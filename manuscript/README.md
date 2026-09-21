@@ -24,6 +24,13 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
+For the simplest end-to-end sample training, run this from the repository
+root:
+
+```bash
+bash run_training.sh
+```
+
 The full datasets and trained checkpoints remain in the GitHub release rather
 than in the Git repository. See `DATASETS.md` for download instructions.
 
