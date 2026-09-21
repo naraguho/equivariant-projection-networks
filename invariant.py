@@ -36,28 +36,44 @@ GROUP = d4_matrices()
 def patch_action_matrix(g, side=3):
     """Convert a 2 x 2 spatial action into a permutation of scalar sites.
 
+    ``g`` is only 2 x 2 because it acts on one coordinate (x, y). We apply it
+    separately to every site, then record where each site's scalar value moves.
     The input contains ``side * side`` scalar values, not vector components.
     The returned matrix has shape (side^2, side^2) and only moves those scalar
     values between lattice sites.
     """
+    # For side=3, center=1. Array position (row=1, col=1) is coordinate (0, 0).
     center = side // 2
+
+    # This will become a 9 x 9 permutation matrix for a 3 x 3 patch.
     action = torch.zeros(side * side, side * side)
 
+    # Visit each of the nine source sites once.
     for source_row in range(side):
         for source_col in range(side):
-            # A lattice position is a two-component coordinate, even though
-            # the value stored at that position is a scalar.
+            # Convert array indices to a centered coordinate:
+            # top-left -> (-1, 1), center -> (0, 0), bottom-right -> (1, -1).
             coordinate = torch.tensor(
                 [source_col - center, center - source_row], dtype=g.dtype
             )
+
+            # g is 2 x 2 and coordinate has length 2, so this ordinary matrix
+            # multiplication returns the transformed coordinate (x', y').
             transformed_coordinate = g @ coordinate
+
+            # Convert the transformed coordinate back to array indices.
             target_col = int(transformed_coordinate[0].item()) + center
             target_row = center - int(transformed_coordinate[1].item())
 
+            # Flatten (row, col) into one index from 0 to 8:
+            # [[0, 1, 2], [3, 4, 5], [6, 7, 8]].
             source = source_row * side + source_col
             target = target_row * side + target_col
+
+            # Record: the scalar at ``source`` must move to ``target``.
             action[target, source] = 1.0
 
+    # Applying x @ action.T now rearranges all nine scalar site values at once.
     return action
 
 
