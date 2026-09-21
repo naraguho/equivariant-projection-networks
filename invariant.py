@@ -4,14 +4,19 @@ import torch
 from torch import nn
 
 
+# Float64 makes the final numerical symmetry error easier to see.
 torch.set_default_dtype(torch.float64)
+# Fix the randomly initialized MLP so every run prints the same result.
 torch.manual_seed(7)
 
 
 def d4_matrices():
     """Return the eight 2 x 2 matrices acting on square-lattice positions."""
-    rotation = torch.tensor([[0.0, -1.0], [1.0, 0.0]])  # 90 degrees
+    # R sends the coordinate (x, y) to (-y, x): a 90-degree rotation.
+    rotation = torch.tensor([[0.0, -1.0], [1.0, 0.0]])
+    # S sends (x, y) to (x, -y): reflection across the x axis.
     reflection = torch.tensor([[1.0, 0.0], [0.0, -1.0]])
+    # I leaves every coordinate unchanged.
     identity = torch.eye(2)
 
     group = []
@@ -61,8 +66,10 @@ def patch_action_matrix(g, side=3):
             # multiplication returns the transformed coordinate (x', y').
             transformed_coordinate = g @ coordinate
 
-            # Convert the transformed coordinate back to array indices.
+            # Convert x' back to a column by adding the center.
             target_col = int(transformed_coordinate[0].item()) + center
+            # Array rows increase downward, while Cartesian y increases
+            # upward. This is why converting y' to a row uses center - y'.
             target_row = center - int(transformed_coordinate[1].item())
 
             # Flatten (row, col) into one index from 0 to 8:
@@ -77,7 +84,10 @@ def patch_action_matrix(g, side=3):
     return action
 
 
+# Convert each 2 x 2 geometric matrix into a 9 x 9 scalar-site permutation.
 INPUT_ACTIONS = [patch_action_matrix(g) for g in GROUP]
+
+# Ordinary MLP: nine scalar inputs -> 16 hidden values -> one scalar output.
 mlp = nn.Sequential(nn.Linear(9, 16), nn.Tanh(), nn.Linear(16, 1))
 
 
@@ -100,6 +110,7 @@ def transform_scalar_patch(x, action):
 
 def invariant_model(x):
     """Map (batch, 9) scalar patches to (batch, 1) invariant scalars."""
+    # Evaluate the same MLP on all eight transformed versions of each patch.
     predictions = [
         mlp(transform_scalar_patch(x, action)) for action in INPUT_ACTIONS
     ]
@@ -117,7 +128,8 @@ def print_group_actions(x):
         print(transformed[0].reshape(3, 3))
 
 
-# Nine distinguishable scalar site values make every spatial action visible.
+# Store one 3 x 3 scalar patch as one flattened row with shape (1, 9).
+# Distinct values make every rotation and reflection visible in the printout.
 x = torch.tensor([[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]])
 print_group_actions(x)
 
@@ -127,7 +139,9 @@ print(f"\nInvariant scalar for the original input: {reference.item():.12f}")
 
 errors = []
 for name, action in zip(GROUP_NAMES, INPUT_ACTIONS, strict=True):
+    # Apply the test group element h to the input patch.
     transformed_x = transform_scalar_patch(x, action)
+    # The projected model must return the same scalar for h x and x.
     transformed_prediction = invariant_model(transformed_x)
     error = (transformed_prediction - reference).abs().max().item()
     errors.append(error)
