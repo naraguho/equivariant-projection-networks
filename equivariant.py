@@ -41,16 +41,6 @@ def reflect_directions(y):
     return y[:, [2, 1, 0, 3]]
 
 
-def transform_directions(y, rotations, reflected):
-    """Apply the same D4 action to four directional scalar outputs."""
-    if reflected:
-        y = reflect_directions(y)
-
-    # One counterclockwise rotation changes [up, right, down, left] into
-    # [right, down, left, up].
-    return torch.roll(y, shifts=-rotations, dims=-1)
-
-
 def inverse_transform_directions(y, rotations, reflected):
     """Undo a D4 action on the four directional scalar outputs."""
     # Undo the rotation first, then undo the reflection.
@@ -105,6 +95,19 @@ print_group_actions(x)
 reference = equivariant_model(x)
 print("\nDirectional output order:", DIRECTION_NAMES)
 print("Output for the original input:", reference[0].detach())
+
+
+# The function below is not part of the equivariant neural network. It is used
+# only to verify the identity P[f](h x) = h P[f](x).
+def transform_directions(y, rotations, reflected):
+    """Apply a D4 action to four directional scalars for the final test."""
+    if reflected:
+        y = reflect_directions(y)
+
+    # One counterclockwise rotation changes [up, right, down, left] into
+    # [right, down, left, up].
+    return torch.roll(y, shifts=-rotations, dims=-1)
+
 
 errors = []
 for name, rotations, reflected in GROUP_ACTIONS:
