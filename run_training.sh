@@ -11,7 +11,7 @@ set -euo pipefail
 repository_dir="$(cd "$(dirname "$0")" && pwd)"
 cd "$repository_dir"
 
-epochs="${EPOCHS:-10}"
+epochs="${EPOCHS:-50}"
 python_command="${PYTHON:-python3}"
 
 if [[ ! -d .venv ]]; then

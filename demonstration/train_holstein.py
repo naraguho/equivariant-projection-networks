@@ -127,7 +127,7 @@ def save_y_equals_x(ed, ml, output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=50)
     args = parser.parse_args()
 
     torch.manual_seed(7)
@@ -156,11 +156,13 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = HolsteinEnergyModel(q_mean, q_std, force_rms).to(device)
+    parameter_count = sum(parameter.numel() for parameter in model.parameters())
     # The tiny three-snapshot demonstration uses a larger learning rate than
-    # the full production run so that ten epochs visibly improve the model.
+    # the full production run so that a short run visibly improves the model.
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=1e-6)
 
     print(f"device={device}  patch={PATCH_SIZE}x{PATCH_SIZE}")
+    print(f"trainable parameters={parameter_count:,}")
     print(f"training snapshots={len(train_index)}  validation snapshots={len(validation_index)}")
     for epoch in range(1, args.epochs + 1):
         model.train()

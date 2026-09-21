@@ -165,7 +165,7 @@ def save_y_equals_x(ed, ml, output):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=50)
     args = parser.parse_args()
 
     torch.manual_seed(7)
@@ -193,9 +193,11 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = FKEquivariantMLP(input_coordinates).to(device)
+    parameter_count = sum(parameter.numel() for parameter in model.parameters())
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-6)
 
     print(f"device={device}  inputs={len(local_columns)}")
+    print(f"trainable parameters={parameter_count:,}")
     print(f"training rows={len(train)}  validation rows={len(validation)}")
     for epoch in range(1, args.epochs + 1):
         model.train()

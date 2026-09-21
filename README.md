@@ -100,7 +100,7 @@ bash run_training.sh
 
 The script creates a Python virtual environment and runs two self-contained,
 pedagogical training programs from [`demonstration/`](demonstration/). It
-trains Holstein first and FK second for 10 epochs using tiny subsets of the
+trains Holstein first and FK second for 50 epochs using tiny subsets of the
 real ED-derived data. Each program contains its own symmetry projection,
 model, loss, and validation code. The Holstein file also shows the total-energy
 derivative $F_i=-\partial E_{\mathrm{ML}}/\partial Q_i$ directly.

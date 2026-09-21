@@ -27,10 +27,14 @@ From the repository root, run both examples with:
 bash run_training.sh
 ```
 
-The default is 10 epochs, Holstein first and FK second. The only validation
+The default is 50 epochs, Holstein first and FK second. The only validation
 figures are:
 
 ```text
 demonstration/output/holstein_validation_y_equals_x.png
 demonstration/output/fk_validation_y_equals_x.png
 ```
+
+The Holstein MLP is `25 -> 64 -> 32 -> 1` with 3,776 trainable parameters.
+The FK MLP is `317 -> 128 -> 64 -> 4` with 49,220 trainable parameters. The
+eightfold symmetry projections reuse each MLP, so they add no parameters.
