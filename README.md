@@ -98,13 +98,15 @@ bash run_training.sh
 ```
 
 The script creates a Python virtual environment, installs the required
-packages, and trains both manuscript models for one epoch using the included
-real-data samples. It also writes the validation ED-versus-ML $y=x$ plots.
+packages, and trains the Holstein model first and the FK model second. Each is
+trained for 10 epochs by default using the included real-data samples. The
+exact paths of the validation ED-versus-ML $y=x$ PNGs are printed after
+training.
 
-For a longer example, set the number of epochs:
+To use a different number of epochs:
 
 ```bash
-EPOCHS=10 bash run_training.sh
+EPOCHS=20 bash run_training.sh
 ```
 
 Results are saved under `manuscript/outputs/fk/` and
