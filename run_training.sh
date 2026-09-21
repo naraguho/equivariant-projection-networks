@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Train both manuscript models on the included real-data samples.
+# Train both pedagogical models on tiny real-data subsets.
 # Usage:
 #   bash run_training.sh
 #   EPOCHS=20 bash run_training.sh
@@ -20,24 +20,17 @@ fi
 
 source .venv/bin/activate
 python -m pip install --quiet --upgrade pip
-python -m pip install --quiet -e ./manuscript
+python -m pip install --quiet -r requirements.txt
 
-cd manuscript
+cd demonstration
 
 echo "Training the Holstein model for $epochs epoch(s)..."
-python training/train_holstein.py \
-    --data-dir data/sample \
-    --output outputs/holstein \
-    --epochs "$epochs"
-echo "Holstein validation PNG: manuscript/outputs/holstein/validation_ed_vs_ml.png"
+python train_holstein.py --epochs "$epochs"
+echo "Holstein validation PNG: demonstration/output/holstein_validation_y_equals_x.png"
 
 echo "Training the FK model for $epochs epoch(s)..."
-python training/train_fk.py \
-    --data data/sample/fk_real_sample.csv.gz \
-    --output outputs/fk \
-    --epochs "$epochs"
-echo "FK validation PNG: manuscript/outputs/fk/validation_ed_vs_ml.png"
+python train_fk.py --epochs "$epochs"
+echo "FK validation PNG: demonstration/output/fk_validation_y_equals_x.png"
 
 echo "Training complete."
-echo "Holstein results: manuscript/outputs/holstein/"
-echo "FK results:        manuscript/outputs/fk/"
+echo "Results: demonstration/output/"

@@ -24,8 +24,8 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-For the simplest end-to-end sample training, run this from the repository
-root:
+For the separate pedagogical implementation using tiny data subsets, run this
+from the repository root:
 
 ```bash
 bash run_training.sh

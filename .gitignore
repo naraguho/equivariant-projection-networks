@@ -6,6 +6,9 @@ build/
 dist/
 *.egg-info/
 data/
+!demonstration/data/
+!demonstration/data/fk_tiny_real.csv.gz
+!demonstration/data/holstein_tiny_real.npz
 checkpoints/
 outputs/
-
+demonstration/output/

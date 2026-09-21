@@ -4,10 +4,11 @@ This repository shows, in two short PyTorch programs, how an ordinary neural
 network can be made exactly invariant or equivariant under the eight rotations
 and reflections of a square (the group $D_4$).
 
-Both introductory programs use a $3\times3$ patch of scalar lattice values,
-matching the type of input used in the manuscript. The equivariant example
-produces four directional scalar outputs that are permuted by $D_4$; the input
-is not treated as a geometric vector.
+Both introductory programs in [`demonstration/`](demonstration/) use a
+$3\times3$ patch of scalar lattice values, matching the type of input used in
+the manuscript. The equivariant example produces four directional scalar
+outputs that are permuted by $D_4$; the input is not treated as a geometric
+vector.
 
 ## The two manuscript examples
 
@@ -59,8 +60,8 @@ layers are required.
 
 ```bash
 python -m pip install -r requirements.txt
-python invariant.py
-python equivariant.py
+python demonstration/invariant.py
+python demonstration/equivariant.py
 ```
 
 Alternatively, use **Code -> Codespaces -> Create codespace on main** on the
@@ -72,8 +73,8 @@ GitHub page. In the Codespaces terminal, run the same three commands.
 git clone https://github.com/naraguho/equivariant-projection-networks.git
 cd equivariant-projection-networks
 python -m pip install -r requirements.txt
-python invariant.py
-python equivariant.py
+python demonstration/invariant.py
+python demonstration/equivariant.py
 ```
 
 Each program constructs a small, randomly initialized ordinary MLP and checks
@@ -97,11 +98,12 @@ cd equivariant-projection-networks
 bash run_training.sh
 ```
 
-The script creates a Python virtual environment, installs the required
-packages, and trains the Holstein model first and the FK model second. Each is
-trained for 10 epochs by default using the included real-data samples. The
-exact paths of the validation ED-versus-ML $y=x$ PNGs are printed after
-training.
+The script creates a Python virtual environment and runs two self-contained,
+pedagogical training programs from [`demonstration/`](demonstration/). It
+trains Holstein first and FK second for 10 epochs using tiny subsets of the
+real ED-derived data. Each program contains its own symmetry projection,
+model, loss, and validation code. The Holstein file also shows the total-energy
+derivative $F_i=-\partial E_{\mathrm{ML}}/\partial Q_i$ directly.
 
 To use a different number of epochs:
 
@@ -109,13 +111,15 @@ To use a different number of epochs:
 EPOCHS=20 bash run_training.sh
 ```
 
-Results are saved under `manuscript/outputs/fk/` and
-`manuscript/outputs/holstein/`.
+The only validation outputs are held-out ED-versus-ML $y=x$ plots under
+`demonstration/output/`.
 
 ## Files to read
 
-- [`invariant.py`](invariant.py): scalar group averaging in one file.
-- [`equivariant.py`](equivariant.py): vector group averaging in one file.
+- [`demonstration/invariant.py`](demonstration/invariant.py): scalar group averaging.
+- [`demonstration/equivariant.py`](demonstration/equivariant.py): directional group averaging.
+- [`demonstration/train_holstein.py`](demonstration/train_holstein.py): self-contained energy-to-force training.
+- [`demonstration/train_fk.py`](demonstration/train_fk.py): self-contained directional training.
 - [`manuscript/`](manuscript/): optional FK/Holstein training, data, notebooks,
   and correlation-function benchmarks used for the manuscript.
 
