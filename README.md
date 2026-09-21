@@ -4,6 +4,11 @@ This repository shows, in two short PyTorch programs, how an ordinary neural
 network can be made exactly invariant or equivariant under the eight rotations
 and reflections of a square (the group $D_4$).
 
+Both introductory programs use a $3\times3$ patch of scalar lattice values,
+matching the type of input used in the manuscript. The equivariant example
+produces four directional scalar outputs that are permuted by $D_4$; the input
+is not treated as a geometric vector.
+
 ## The two manuscript examples
 
 ### Falicov-Kimball: equivariant directional outputs
