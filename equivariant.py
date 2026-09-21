@@ -43,7 +43,10 @@ def reflect_directions(y):
 
 def inverse_transform_directions(y, rotations, reflected):
     """Undo a D4 action on the four directional scalar outputs."""
-    # Undo the rotation first, then undo the reflection.
+    # The forward action is g = R^k S: reflect first, then rotate.
+    # Therefore g^(-1) = (R^k S)^(-1) = S^(-1) R^(-k) = S R^(-k).
+    # Operations are consequently undone in reverse order: first apply
+    # R^(-k) with a positive roll, and then apply S if reflection was used.
     y = torch.roll(y, shifts=rotations, dims=-1)
     if reflected:
         y = reflect_directions(y)
