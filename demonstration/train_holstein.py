@@ -30,9 +30,27 @@ GROUP_ACTIONS = (
 
 
 def periodic_patches(q):
-    """Extract one periodic 5x5 scalar patch around every lattice site."""
+    """Collect the local environment seen by every site on the lattice.
+
+    ``q`` has shape ``(batch, 30, 30)`` and stores one scalar displacement at
+    each site.  The MLP does not read the entire lattice at once.  Instead, it
+    receives a 5x5 neighborhood centered on one site.  This function creates
+    all 900 neighborhoods simultaneously, returning an array with shape
+    ``(batch, 30, 30, 5, 5)``.
+
+    The lattice is periodic.  For example, the patch centered on the left
+    edge also contains values copied from the right edge.  Circular padding
+    supplies those wrapped values before the 5x5 windows are extracted.
+    """
+    # A 5x5 patch extends two sites away from its center in each direction.
     half = PATCH_SIZE // 2
+
+    # Add a one-channel dimension required by PyTorch's 2D padding operation.
+    # Padding by two with mode="circular" implements periodic boundaries.
     padded = F.pad(q[:, None], (half, half, half, half), mode="circular")
+
+    # Slide a 5x5 window across all original lattice sites.  No Python loop
+    # over the 900 centers is needed: unfold creates every window at once.
     patches = padded.unfold(2, PATCH_SIZE, 1).unfold(3, PATCH_SIZE, 1)
     # Shape: (batch, Ly, Lx, 5, 5).
     return patches.squeeze(1)
@@ -56,6 +74,10 @@ class HolsteinEnergyModel(nn.Module):
             # Force labels cannot determine a constant energy offset.
             nn.Linear(32, 1, bias=False),
         )
+        # These three numbers are fixed normalization constants, not weights
+        # learned by the optimizer.  register_buffer stores them inside the
+        # model so that model.to(device) moves them to the CPU/GPU together
+        # with the MLP and model.state_dict() would save them in a checkpoint.
         self.register_buffer("q_mean", torch.tensor(q_mean))
         self.register_buffer("q_std", torch.tensor(q_std))
         self.register_buffer("energy_scale", torch.tensor(q_std * force_rms))
@@ -75,15 +97,38 @@ class HolsteinEnergyModel(nn.Module):
         local_energy = torch.stack(local_predictions).mean(dim=0)
         local_energy = local_energy.reshape(q.shape[0], LATTICE_SIZE, LATTICE_SIZE)
 
-        # The same local network is shared over every site. Their sum is the
-        # extensive total ML energy for one 30x30 configuration.
+        # The same local network is shared over every site.  Summing dimensions
+        # 1 and 2 adds the 30x30=900 local contributions but leaves the batch
+        # dimension untouched.  Thus the result has shape (batch,), containing
+        # one extensive total energy for every lattice configuration.
+        # energy_scale restores physical units after input/target normalization.
         return self.energy_scale * local_energy.sum(dim=(1, 2))
 
 
 def force_from_total_energy(model, q, create_graph):
-    """Compute the conservative force F_i=-dE_ML/dQ_i explicitly."""
+    """Differentiate one scalar total energy to obtain every site force.
+
+    If ``q`` contains two 30x30 configurations, ``model.total_energy(q)`` has
+    shape ``(2,)`` whereas the returned force has shape ``(2, 30, 30)``.  One
+    entry is, for example, ``force[0, 4, 7] = -dE_0/dq[0, 4, 7]``.  Autograd
+    computes all 900 derivatives for each configuration in one call.
+
+    During training, ``create_graph=True`` keeps the derivative calculation
+    differentiable.  This is necessary because the force loss must propagate
+    through ``-dE/dq`` and update the MLP weights.  Validation uses ``False``
+    because no subsequent parameter derivative is required.
+    """
+    # Start a fresh autograd input.  detach() disconnects q from any earlier
+    # calculation, and requires_grad_(True) asks PyTorch to track dE/dq.
     q_for_derivative = q.detach().requires_grad_(True)
+
+    # There is one scalar energy per batch member.
     total_energy = model.total_energy(q_for_derivative)
+
+    # Summing the batch energies gives autograd a scalar output.  Configurations
+    # are independent, so differentiating this sum still returns the separate
+    # gradient for every member.  [0] selects the gradient with respect to the
+    # only requested input, q_for_derivative.  The minus sign defines force.
     force = -torch.autograd.grad(
         total_energy.sum(), q_for_derivative, create_graph=create_graph
     )[0]

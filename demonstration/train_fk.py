@@ -52,16 +52,36 @@ def inverse_transform_coordinate(x, y, rotations, reflected):
 
 
 def permutation(coordinates, rotations, reflected):
-    """Return indices that rotate/reflect scalar values on named sites."""
+    """Build the index ordering that applies one spatial action to scalars.
+
+    ``coordinates`` tells us where each entry of a flat input lives.  For the
+    simple list ``[(1, 0), (-1, 0), (0, 1), (0, -1)]``, the entries mean
+    ``[right, left, up, down]``.  The returned tensor can be used directly as
+    ``transformed = values[:, permutation]``.
+
+    To determine the value at a transformed target position ``r``, we look at
+    the original position ``g^{-1}r``.  For example, after a 90-degree
+    counterclockwise rotation, the value now appearing at ``up=(0,1)`` came
+    from ``right=(1,0)``.  Repeating this lookup for every target gives the
+    complete permutation without changing any scalar value itself.
+    """
+    # Map a coordinate such as (1, 0) to its position in the flat vector.
     index = {coordinate: i for i, coordinate in enumerate(coordinates)}
     result = []
+
+    # Construct the transformed vector in the same fixed coordinate order.
     for target_coordinate in coordinates:
         # The value appearing at target r after transformation came from
         # source g^(-1)r before transformation.
         source_coordinate = inverse_transform_coordinate(
             *target_coordinate, rotations, reflected
         )
+
+        # Store the flat-vector index of that source value.  For the example
+        # above, result[the up slot] receives the index of the right slot.
         result.append(index[source_coordinate])
+
+    # Long integer tensors are the index-array type expected by PyTorch.
     return torch.tensor(result, dtype=torch.long)
 
 
