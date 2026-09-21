@@ -4,6 +4,23 @@ This repository shows, in two short PyTorch programs, how an ordinary neural
 network can be made exactly invariant or equivariant under the eight rotations
 and reflections of a square (the group $D_4$).
 
+## The two manuscript examples
+
+### Falicov-Kimball: equivariant directional outputs
+
+[![Equivariant group averaging for the Falicov-Kimball model](figures/fk_schematic.png)](figures/fk_schematic.pdf)
+
+The local configuration is symmetry-transformed, evaluated by the same
+ordinary MLP, returned to the original output frame, and averaged. The four
+outputs are the directional energy changes.
+
+### Holstein: invariant local energy
+
+[![Invariant group averaging for the Holstein model](figures/holstein_schematic.png)](figures/holstein_schematic.pdf)
+
+The transformed displacement patches are evaluated by the same ordinary MLP
+and averaged to obtain the invariant local energy $\epsilon_i$.
+
 ## The whole idea
 
 Start with any neural network $f$ and average over the symmetry group $G$.
