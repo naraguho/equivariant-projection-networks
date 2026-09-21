@@ -103,8 +103,8 @@ def validation_predictions(model, loader, device):
     return torch.cat(ed_values).numpy(), torch.cat(ml_values).numpy()
 
 
-def save_y_equals_x(ed, ml, output):
-    """Save the only validation figure used in this demonstration."""
+def save_and_show_y_equals_x(ed, ml, output):
+    """Save and display the only validation figure in this demonstration."""
     low, high = float(min(ed.min(), ml.min())), float(max(ed.max(), ml.max()))
     padding = 0.03 * (high - low or 1.0)
     limits = (low - padding, high + padding)
@@ -122,6 +122,7 @@ def save_y_equals_x(ed, ml, output):
     ax.legend(frameon=False)
     fig.tight_layout()
     fig.savefig(output, dpi=200)
+    plt.show()
     plt.close(fig)
 
 
@@ -184,7 +185,7 @@ def main():
     ed, ml = validation_predictions(model, validation_loader, device)
     OUTPUT.mkdir(exist_ok=True)
     figure = OUTPUT / "holstein_validation_y_equals_x.png"
-    save_y_equals_x(ed, ml, figure)
+    save_and_show_y_equals_x(ed, ml, figure)
     print(f"saved {figure}")
 
 

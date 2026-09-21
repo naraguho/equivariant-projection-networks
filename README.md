@@ -111,8 +111,9 @@ To use a different number of epochs:
 EPOCHS=20 bash run_training.sh
 ```
 
-The only validation outputs are held-out ED-versus-ML $y=x$ plots under
-`demonstration/output/`.
+The held-out ED-versus-ML $y=x$ plots are displayed on screen and saved under
+`demonstration/output/`. A headless SSH or batch session still saves the PNGs
+but cannot open graphical plot windows.
 
 ## Files to read
 
