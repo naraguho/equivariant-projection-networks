@@ -56,16 +56,45 @@ layers are required.
 1. Sign in to GitHub and open this repository.
 2. Click the green **Code** button, then **Download ZIP**.
 3. Unzip the downloaded file and open a terminal in that folder.
-4. Run:
+4. Install the required Python packages:
 
 ```bash
 python -m pip install -r requirements.txt
+```
+
+Test the two smallest symmetry demonstrations first:
+
+```bash
 python demonstration/invariant.py
 python demonstration/equivariant.py
 ```
 
+These programs require no training. They print the eight transformed inputs
+and verify that the largest symmetry error is close to machine precision.
+
+To quickly test that both real-data training programs work, run one epoch of
+each program manually:
+
+```bash
+python demonstration/train_holstein.py --epochs 1
+python demonstration/train_fk.py --epochs 1
+```
+
+For the normal 50-epoch demonstrations, run:
+
+```bash
+python demonstration/train_holstein.py
+python demonstration/train_fk.py
+```
+
+Each training command displays its held-out ED-versus-ML validation plot and
+also saves the PNG under `demonstration/output/`. Close the Holstein plot
+window before starting the FK command. On a headless computer, the plot window
+cannot open, but the PNG is still saved.
+
 Alternatively, use **Code -> Codespaces -> Create codespace on main** on the
-GitHub page. In the Codespaces terminal, run the same three commands.
+GitHub page. In the Codespaces terminal, use the same installation, symmetry,
+and training commands above.
 
 ## Run with Git
 
