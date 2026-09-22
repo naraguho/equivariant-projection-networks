@@ -8,7 +8,7 @@ needed for the two introductory examples in the repository root.
 - `epn/`: reusable $D_4$ transformations and projection models.
 - `examples/`: manuscript-sized model demonstrations.
 - `training/`: FK and Holstein training programs.
-- `benchmarks/`: saved ED-versus-ML and correlation-collapse plots.
+- `benchmarks/`: optional scripts for research-scale benchmarks.
 - `notebooks/`: the visual tutorial with rendered outputs.
 - `scripts/`: dataset download and notebook-generation utilities.
 - `tests/`: numerical symmetry tests.
@@ -45,22 +45,3 @@ outputs/holstein/validation_ed_vs_ml.png  ED force versus conservative ML force
 ```
 
 The dashed diagonal is $y=x$. Only held-out validation trajectories are used.
-
-The real dynamical correlation comparisons are shown below. These use ED
-trajectories and independent trajectories generated with the trained ML model;
-they are not training-label comparisons.
-
-### Falicov-Kimball correlation validation
-
-![FK ED-kMC versus EPN-kMC raw correlation](figures/fk_ed_vs_ml_correlation.png)
-
-### Holstein correlation validation
-
-![Holstein ED versus ML raw correlation](figures/holstein_ed_vs_ml_correlation.png)
-
-To regenerate both figures from the released data:
-
-```bash
-python scripts/download_data.py manuscript_benchmarks.zip --extract
-python benchmarks/plot_saved_benchmarks.py
-```
