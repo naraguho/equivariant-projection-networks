@@ -19,9 +19,10 @@ HERE = Path(__file__).resolve().parent
 DATA = HERE / "data" / "fk_tiny_real.csv.gz"
 OUTPUT = HERE / "output"
 
-TARGETS = ["deltaF_px", "deltaF_mx", "deltaF_py", "deltaF_my"]
-MASKS = ["mask_px", "mask_mx", "mask_py", "mask_my"]
-DIRECTION_COORDINATES = ((1, 0), (-1, 0), (0, 1), (0, -1))
+# Keep the four outputs in the same visual order used by equivariant.py.
+DIRECTION_NAMES = ("up", "right", "down", "left")
+TARGETS = ["deltaF_py", "deltaF_px", "deltaF_my", "deltaF_mx"]
+MASKS = ["mask_py", "mask_px", "mask_my", "mask_mx"]
 
 # D4 = {I, S, R, RS, R^2, R^2S, R^3, R^3S}.
 # Each tuple is (name, number of 90-degree rotations, reflect first?).
@@ -33,56 +34,29 @@ GROUP_ACTIONS = (
 )
 
 
-def transform_coordinate(x, y, rotations, reflected):
-    """Apply S first, followed by ``rotations`` copies of R."""
-    if reflected:                 # S(x,y) = (x,-y)
-        y = -y
-    for _ in range(rotations):    # R(x,y) = (-y,x)
-        x, y = -y, x
-    return x, y
+def transform_patch(patch, rotations, reflected):
+    """Rotate/reflect a visible square patch, exactly as in equivariant.py."""
+    if reflected:
+        # S: exchange the top and bottom rows (reflection across the x axis).
+        patch = torch.flip(patch, dims=(-2,))
+
+    # R^k: rotate the patch counterclockwise k times.
+    return torch.rot90(patch, k=rotations, dims=(-2, -1))
 
 
-def inverse_transform_coordinate(x, y, rotations, reflected):
-    """Undo R^k S by undoing the rotation first and reflection second."""
-    for _ in range(rotations):    # R^(-1)(x,y) = (y,-x)
-        x, y = y, -x
-    if reflected:                 # S^(-1) = S
-        y = -y
-    return x, y
+def reflect_directions(y):
+    """Reflect outputs ordered as (up, right, down, left)."""
+    return y[:, [2, 1, 0, 3]]
 
 
-def permutation(coordinates, rotations, reflected):
-    """Build the index ordering that applies one spatial action to scalars.
-
-    ``coordinates`` tells us where each entry of a flat input lives.  For the
-    simple list ``[(1, 0), (-1, 0), (0, 1), (0, -1)]``, the entries mean
-    ``[right, left, up, down]``.  The returned tensor can be used directly as
-    ``transformed = values[:, permutation]``.
-
-    To determine the value at a transformed target position ``r``, we look at
-    the original position ``g^{-1}r``.  For example, after a 90-degree
-    counterclockwise rotation, the value now appearing at ``up=(0,1)`` came
-    from ``right=(1,0)``.  Repeating this lookup for every target gives the
-    complete permutation without changing any scalar value itself.
-    """
-    # Map a coordinate such as (1, 0) to its position in the flat vector.
-    index = {coordinate: i for i, coordinate in enumerate(coordinates)}
-    result = []
-
-    # Construct the transformed vector in the same fixed coordinate order.
-    for target_coordinate in coordinates:
-        # The value appearing at target r after transformation came from
-        # source g^(-1)r before transformation.
-        source_coordinate = inverse_transform_coordinate(
-            *target_coordinate, rotations, reflected
-        )
-
-        # Store the flat-vector index of that source value.  For the example
-        # above, result[the up slot] receives the index of the right slot.
-        result.append(index[source_coordinate])
-
-    # Long integer tensors are the index-array type expected by PyTorch.
-    return torch.tensor(result, dtype=torch.long)
+def inverse_transform_directions(y, rotations, reflected):
+    """Return four predictions from the transformed frame to the original."""
+    # The input action is g=R^k S: reflect first, then rotate.  Consequently,
+    # g^(-1)=S R^(-k): undo the rotation first, then undo the reflection.
+    y = torch.roll(y, shifts=rotations, dims=-1)
+    if reflected:
+        y = reflect_directions(y)
+    return y
 
 
 def local_columns_and_coordinates(columns):
@@ -101,31 +75,59 @@ class FKEquivariantMLP(nn.Module):
 
     def __init__(self, input_coordinates):
         super().__init__()
+
+        # The CSV stores only the 317 sites inside a circular cutoff.  Find the
+        # surrounding square and remember where those circular sites belong.
+        radius = max(max(abs(x), abs(y)) for x, y in input_coordinates)
+        self.patch_side = 2 * radius + 1
+        center = radius
+        rows = [center - y for x, y in input_coordinates]
+        columns = [center + x for x, y in input_coordinates]
+        self.register_buffer("circle_rows", torch.tensor(rows, dtype=torch.long))
+        self.register_buffer(
+            "circle_columns", torch.tensor(columns, dtype=torch.long)
+        )
+
         self.mlp = nn.Sequential(
             nn.Linear(len(input_coordinates), 128), nn.SiLU(),
             nn.Linear(128, 64), nn.SiLU(),
             nn.Linear(64, 4),
         )
-        self.input_permutations = [
-            permutation(input_coordinates, rotations, reflected)
-            for _, rotations, reflected in GROUP_ACTIONS
-        ]
-        self.output_permutations = [
-            permutation(DIRECTION_COORDINATES, rotations, reflected)
-            for _, rotations, reflected in GROUP_ACTIONS
-        ]
+
+    def put_circle_in_square_patch(self, x):
+        """Place 317 flat circular values at their visible 2D positions."""
+        patch = x.new_zeros((x.shape[0], self.patch_side, self.patch_side))
+        patch[:, self.circle_rows, self.circle_columns] = x
+        return patch
+
+    def read_circle_from_square_patch(self, patch):
+        """Read the same 317 circular sites back into the original CSV order."""
+        return patch[:, self.circle_rows, self.circle_columns]
 
     def forward(self, x):
+        # First turn the hard-to-read flat input back into a visible 2D patch.
+        circular_patch = self.put_circle_in_square_patch(x)
         aligned_predictions = []
-        for input_permutation, output_permutation in zip(
-            self.input_permutations, self.output_permutations, strict=True
-        ):
-            # Transform the scalar input sites, evaluate the ordinary MLP,
-            # then return its four outputs to the original directional frame.
-            transformed_x = x[:, input_permutation.to(x.device)]
-            transformed_y = self.mlp(transformed_x)
-            inverse_output = torch.argsort(output_permutation).to(x.device)
-            aligned_predictions.append(transformed_y[:, inverse_output])
+
+        for _, rotations, reflected in GROUP_ACTIONS:
+            # This is now the same transparent flip/rot90 operation used in
+            # equivariant.py.  Zeros outside the circular cutoff remain zeros.
+            transformed_patch = transform_patch(
+                circular_patch, rotations, reflected
+            )
+
+            # Give only the 317 physical circular sites to the ordinary MLP.
+            transformed_x = self.read_circle_from_square_patch(
+                transformed_patch
+            )
+            raw_prediction = self.mlp(transformed_x)
+
+            # The MLP outputs are (up, right, down, left) in the transformed
+            # frame.  Undo that frame change before averaging predictions.
+            aligned_prediction = inverse_transform_directions(
+                raw_prediction, rotations, reflected
+            )
+            aligned_predictions.append(aligned_prediction)
 
         # P[f](x) = (1/8) sum_g D_out(g)^(-1) f(D_in(g)x).
         return torch.stack(aligned_predictions).mean(dim=0)
