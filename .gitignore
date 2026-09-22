@@ -12,3 +12,5 @@ data/
 checkpoints/
 outputs/
 demonstration/output/
+manuscript/figures/fk_ed_vs_ml_correlation.png
+manuscript/figures/holstein_ed_vs_ml_correlation.png
